@@ -1,0 +1,9 @@
+[package]
+
+name = "norvig"
+version = "0.0.1"
+authors = ["James Goldwater <james.goldwater@gmail.com>"]
+
+[dependencies.regex_macros]
+
+git = "https://github.com/rust-lang/regex"
