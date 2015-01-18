@@ -36,6 +36,8 @@ fn word_counts(t: &str) -> HashMap<&str, i32>  {
     words
 }
 
+
+
 // returns a tuple
 fn split(s: &str, pos: usize) -> (&str, &str) {
     (&s[0..pos], &s[pos..s.len()])
@@ -129,16 +131,58 @@ fn known(words: &HashSet<String>, model: &HashMap<&str, i32>) -> HashSet<String>
     set
 }
 
+// def known_edits2(word):
+//     return set(e2
+//                for e1 in edits1(word)
+//                for e2 in edits1(e1)
+//                if e2 in NWORDS)
+
+fn known_edits2(word: &str, model: &HashMap<&str, i32>) -> HashSet<String> {
+    let mut set = HashSet::<String>::new();
+    for e1 in edits1(word).iter() {
+        for e2 in edits1(&e1[]).iter() {
+            if model.contains_key(&e2[]) {
+                set.insert(e2.to_string());
+            }
+        }
+    }
+    set
+}
+
+fn candidates(word: &str, model : &HashMap<&str, i32>) -> HashSet<String> {
+    let mut word_set = HashSet::new();
+    word_set.insert(word.to_string());
+    let known_edits1 : HashSet<String> = known(&edits1(word), model);
+
+    let known_as_set : HashSet<String> = known(&word_set, model);
+    let i =  known_as_set.union(&known_edits1);
+    let s = i.cloned().collect::<HashSet<String>>();
+
+    let s2 = s.union(&known_edits2(word, model)).cloned().collect::<HashSet<String>>();
+    let s3 = s.union(&word_set).cloned().collect::<HashSet<String>>();
+    s3
+}
+
+fn count<'a>(word: &str, model: &'a HashMap<&str, i32>) -> i32 {
+    match model.get(word) {
+        Some(count) => count.clone(),
+        None => 1
+    }
+}
+
+fn correct<'a>(word : &str, model : &'a HashMap<&str, i32>) -> String {
+    let mut candidates = candidates(word, model).into_iter().collect::<Vec<String>>();
+    candidates.sort_by(|b, a|
+                       count(&a[], model).cmp(&count(&b[], model)));
+    candidates[0].clone()
+}
+
 fn main() {
     let s = source();  // separate line to persuade borrow-checker
     let t = &s[];
 
     let ws = word_counts(t);
-    println!("TADA");
-    for a in known(&edits1("theer"), &ws).iter() {
-        println!("{}", a);
-    }
-
+    println!("Corrected: {}", correct("govermnent", &ws));
 }
 
 #[test]
