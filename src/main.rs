@@ -5,11 +5,35 @@
 
 extern crate regex_macros;
 extern crate regex;
+extern crate test;
+extern crate core;
 
 use std::io::File;
 use std::ascii::AsciiExt;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::fmt;
+
+struct StringSet(pub HashSet<String>);
+
+impl fmt::Display for StringSet {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let StringSet(ref x) = *self;
+        write!(f, "[");
+        // TODO write 'zip/enumerate-type iter returning (first?, value)
+        let mut first = true;
+        for s in x.iter() {
+            if first {
+                write!(f, "{}", s);
+            }
+            else {
+                write!(f, ",{}", s);
+            }
+            first = false;
+        }
+        write!(f, "]")
+    }
+}
 
 fn lowercase(s : &str) -> String {
     return s.to_ascii_lowercase();
@@ -35,8 +59,6 @@ fn word_counts(t: &str) -> HashMap<&str, i32>  {
     }
     words
 }
-
-
 
 // returns a tuple
 fn split(s: &str, pos: usize) -> (&str, &str) {
@@ -117,25 +139,21 @@ fn edits1(word: &str) -> HashSet<String> {
     insert_all(&mut set, inserts(&splits));
     insert_all(&mut set, transposes(&splits));
     insert_all(&mut set, replaces(&splits));
+
     set
 }
 
 // TODO words should be an iterator?
-fn known(words: &HashSet<String>, model: &HashMap<&str, i32>) -> HashSet<String> {
+// TODO return should be the word passed in - no need to realloc?
+fn known<'a>(words: HashSet<String>, model: &HashMap<&str, i32>) -> HashSet<String> {
     let mut set = HashSet::<String>::new();
-    for word in words.iter() {
-        if model.contains_key(&word[]) {
-            set.insert(word.to_string());
+    for word in words.into_iter() {
+        if model.contains_key(word.as_slice()) {
+            set.insert(word);
         }
     }
     set
 }
-
-// def known_edits2(word):
-//     return set(e2
-//                for e1 in edits1(word)
-//                for e2 in edits1(e1)
-//                if e2 in NWORDS)
 
 fn known_edits2(word: &str, model: &HashMap<&str, i32>) -> HashSet<String> {
     let mut set = HashSet::<String>::new();
@@ -149,18 +167,22 @@ fn known_edits2(word: &str, model: &HashMap<&str, i32>) -> HashSet<String> {
     set
 }
 
+fn  make_set(s: String) -> HashSet<String> {
+    let mut set = HashSet::new(); set.insert(s);
+    set
+}
+
 fn candidates(word: &str, model : &HashMap<&str, i32>) -> HashSet<String> {
-    let mut word_set = HashSet::new();
-    word_set.insert(word.to_string());
-    let known_edits1 : HashSet<String> = known(&edits1(word), model);
+    let known_as_set = known(make_set(word.to_string()), model);
+    if known_as_set.len() > 0 { return known_as_set }
 
-    let known_as_set : HashSet<String> = known(&word_set, model);
-    let i =  known_as_set.union(&known_edits1);
-    let s = i.cloned().collect::<HashSet<String>>();
+    let known_edits1  = known(edits1(word), model);
+    if known_edits1.len() > 0 { return known_edits1 }
 
-    let s2 = s.union(&known_edits2(word, model)).cloned().collect::<HashSet<String>>();
-    let s3 = s.union(&word_set).cloned().collect::<HashSet<String>>();
-    s3
+    let known_edits2 = known_edits2(word, model);
+    if known_edits2.len() > 0 { return known_edits2 }
+
+    return make_set(word.to_string())
 }
 
 fn count<'a>(word: &str, model: &'a HashMap<&str, i32>) -> i32 {
@@ -182,7 +204,9 @@ fn main() {
     let t = &s[];
 
     let ws = word_counts(t);
-    println!("Corrected: {}", correct("govermnent", &ws));
+    println!("Corrected: {}", correct("ther", &ws));
+
+//    println!("{}", StringSet(candidates("ther", &ws)));
 }
 
 #[test]
@@ -207,9 +231,7 @@ fn test_deletes()
     assert_eq!(s, expected);
 }
 
-// #[test]
-// fn test_combine() {
-//     let split = vec!(("", "bc"), ("a", "c"), ("ab", ""));
-//     let combined = vec!("bc".to_string(), "ac".to_string(), "ab".to_string());
-//     assert_eq!(combine(&split), combined);
-// }
+#[bench]
+fn bench_main(b: &mut test::Bencher) {
+    main()
+}
