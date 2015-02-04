@@ -3,20 +3,24 @@
 #![feature(slicing_syntax)]
 #[plugin]
 
+
 extern crate regex_macros;
 extern crate regex;
 extern crate test;
 extern crate core;
 
-use std::io::File;
+use std::old_io::File;
+use std::old_io::BufferedReader;
 use std::ascii::AsciiExt;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::fmt;
+//use std::fmt;
+use std::os;
 
-struct StringSet(pub HashSet<String>);
+/*
+struct StringSet<'a>(pub &'a HashSet<String>);
 
-impl fmt::Display for StringSet {
+impl <'a> fmt::Display for StringSet<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let StringSet(ref x) = *self;
         write!(f, "[");
@@ -35,12 +39,18 @@ impl fmt::Display for StringSet {
     }
 }
 
+fn pv(v : &Vec<String>) {
+    for s in v.iter() {
+       println!("{}", s );
+    }
+}
+*/
 fn lowercase(s : &str) -> String {
     return s.to_ascii_lowercase();
 }
 
 fn source() -> String {
-    match File::open(&Path::new("gettysburg.txt")).read_to_string() {
+    match File::open(&Path::new("mobydick.txt")).read_to_string() {
         Ok(text) => lowercase(&text[]),
         Err(err) => panic!("Cannot open model data: {}", err),
     }
@@ -164,10 +174,11 @@ fn known_edits2(word: &str, model: &HashMap<&str, i32>) -> HashSet<String> {
             }
         }
     }
+
     set
 }
 
-fn  make_set(s: String) -> HashSet<String> {
+fn make_set(s: String) -> HashSet<String> {
     let mut set = HashSet::new(); set.insert(s);
     set
 }
@@ -194,6 +205,7 @@ fn count<'a>(word: &str, model: &'a HashMap<&str, i32>) -> i32 {
 
 fn correct<'a>(word : &str, model : &'a HashMap<&str, i32>) -> String {
     let mut candidates = candidates(word, model).into_iter().collect::<Vec<String>>();
+    //pv(&candidates);
     candidates.sort_by(|b, a|
                        count(&a[], model).cmp(&count(&b[], model)));
     candidates[0].clone()
@@ -204,9 +216,17 @@ fn main() {
     let t = &s[];
 
     let ws = word_counts(t);
-    println!("Corrected: {}", correct("ther", &ws));
 
-//    println!("{}", StringSet(candidates("ther", &ws)));
+    let argv = os::args();
+    let input = argv.get(1).unwrap();
+    let path = Path::new(&input[]);
+    let mut reader = BufferedReader::new(File::open(&path));
+
+    for line in reader.lines() {
+        let w = line.unwrap();
+        let wtrimmed = w.trim();
+        println!("{} -> {}", wtrimmed,  correct(wtrimmed, &ws));
+    }
 }
 
 #[test]
@@ -229,9 +249,4 @@ fn test_deletes()
     let s = deletes(&splits("abc"));
     let expected = vec!("bc","ac", "ab");
     assert_eq!(s, expected);
-}
-
-#[bench]
-fn bench_main(b: &mut test::Bencher) {
-    main()
 }
