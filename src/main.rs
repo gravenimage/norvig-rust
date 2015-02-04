@@ -143,34 +143,36 @@ fn replaces(splits: &Vec<(&str, &str)>) -> Vec<String> {
     v
 }
 
-// consumes all the values in the vec and inserts them into the set
-fn insert_all(set : &mut HashSet<String>, vec : Vec<String>) {
-    // TODO there must be a very generic way to do this! FromIter?
-    for s in vec.into_iter() {
-        (*set).insert(s);
-    }
-}
+// // consumes all the values in the vec and inserts them into the set
+// fn insert_all(set : &mut HashSet<String>, vec : Vec<String>) {
+//     // TODO there must be a very generic way to do this! FromIter?
+//     for s in vec.into_iter() {
+//         (*set).insert(s);
+//     }
+// }
 
 // a set of all the strings in 1-edit distance
-fn edits1(word: &str) -> HashSet<String> {
-    let mut set = HashSet::<String>::new();
+fn edits1(word: &str) -> Vec<String> {
+    //let mut set = HashSet::<String>::new();
     let splits = splits(word);
-    insert_all(&mut set, deletes(&splits));
-    insert_all(&mut set, inserts(&splits));
-    insert_all(&mut set, transposes(&splits));
-    insert_all(&mut set, replaces(&splits));
 
-    set
+    let mut v = Vec::<String>::new();
+    v.reserve(splits.len() * 2 + splits.len() * 2 * 26);
+    v.push_all(&deletes(&splits));
+    v.push_all(&inserts(&splits));
+    v.push_all(&transposes(&splits));
+    v.push_all(&replaces(&splits));
+    v
 }
 
 // return only the words known in the model
 // TODO words should be an iterator?
 // TODO return should be the word passed in - no need to realloc?
-fn known<'a>(words: HashSet<String>, model: &HashMap<&str, i32>) -> HashSet<String> {
-    let mut set = HashSet::<String>::new();
+fn known<'a>(words: Vec<String>, model: &HashMap<&str, i32>) -> Vec<String> {
+    let mut set = Vec::<String>::new();
     for word in words.into_iter() {
         if model.contains_key(word.as_slice()) {
-            set.insert(word);
+            set.push(word);
         }
     }
     set
@@ -200,17 +202,18 @@ fn make_set(s: String) -> HashSet<String> {
 // all the candidate words for a supplied word.
 // each stage (word, edit1, edit2) is infinitely more likely
 // than the next
-fn candidates(word: &str, model : &HashMap<&str, i32>) -> HashSet<String> {
-    let known_as_set = known(make_set(word.to_string()), model);
+fn candidates(word: &str, model : &HashMap<&str, i32>) -> Vec<String> {
+    //let known_as_set = known(make_set(word.to_string()), model);
+    let known_as_set = known(vec![word.to_string()], &model);
     if known_as_set.len() > 0 { return known_as_set }
 
     let known_edits1  = known(edits1(word), model);
     if known_edits1.len() > 0 { return known_edits1 }
 
     let known_edits2 = known_edits2(word, model);
-    if known_edits2.len() > 0 { return known_edits2 }
+    if known_edits2.len() > 0 { return known_edits2.into_iter().collect::<Vec<String>>() }
 
-    return make_set(word.to_string())
+    return vec![word.to_string()]
 }
 
 // returns the word frequency, but gives *all* words a minimum frequency
