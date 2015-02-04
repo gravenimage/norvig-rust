@@ -49,6 +49,7 @@ fn lowercase(s : &str) -> String {
     return s.to_ascii_lowercase();
 }
 
+/// a lowercase string of the model text
 fn source() -> String {
     match File::open(&Path::new("mobydick.txt")).read_to_string() {
         Ok(text) => lowercase(&text[]),
@@ -56,6 +57,7 @@ fn source() -> String {
     }
 }
 
+// calculates the word-frequencies in the supplied text
 fn word_counts(t: &str) -> HashMap<&str, i32>  {
     let mut words = HashMap::<&str, i32>::new();
 
@@ -70,7 +72,8 @@ fn word_counts(t: &str) -> HashMap<&str, i32>  {
     words
 }
 
-// returns a tuple
+// returns a tuple of the input string split
+// e.g split("abcd", 2) -> ("ab","cd")
 fn split(s: &str, pos: usize) -> (&str, &str) {
     (&s[0..pos], &s[pos..s.len()])
 }
@@ -79,6 +82,7 @@ fn alphabet() -> &'static str {
     "abcdefghijklmnopqrstuvwxyz"
 }
 
+// a vec of all the split pairs of a word
 fn splits(s: &str) -> Vec<(&str, &str)> {
     let mut v = Vec::<(&str, &str)>::new();
     for pos in 0..s.len()+1 {
@@ -87,6 +91,7 @@ fn splits(s: &str) -> Vec<(&str, &str)> {
     v
 }
 
+// all the possible single-char deletes
 fn deletes<'a, 'b>(splits : & 'a Vec<(& 'b str, & 'b str)>) ->  Vec<String> {
     let mut v = Vec::<String>::new();
     for &(a, b) in splits.iter() {
@@ -97,6 +102,7 @@ fn deletes<'a, 'b>(splits : & 'a Vec<(& 'b str, & 'b str)>) ->  Vec<String> {
     v
 }
 
+// all the possible single-char transposes
 fn transposes<'a, 'b>(splits : & 'a Vec<(& 'b str, & 'b str)>) ->  Vec<String> {
     let mut v = Vec::<String>::new();
     for &(a, b) in splits.iter() {
@@ -107,6 +113,7 @@ fn transposes<'a, 'b>(splits : & 'a Vec<(& 'b str, & 'b str)>) ->  Vec<String> {
     v
 }
 
+// all the possible single-char inserts
 fn inserts(splits: &Vec<(&str, &str)>) -> Vec<String> {
     let mut v = Vec::<String>::new();
     for &(a, b) in splits.iter() {
@@ -120,6 +127,7 @@ fn inserts(splits: &Vec<(&str, &str)>) -> Vec<String> {
     v
 }
 
+// all the possible single-char replacements
 fn replaces(splits: &Vec<(&str, &str)>) -> Vec<String> {
     let mut v = Vec::<String>::new();
     for &(a, b) in splits.iter() {
@@ -135,6 +143,7 @@ fn replaces(splits: &Vec<(&str, &str)>) -> Vec<String> {
     v
 }
 
+// consumes all the values in the vec and inserts them into the set
 fn insert_all(set : &mut HashSet<String>, vec : Vec<String>) {
     // TODO there must be a very generic way to do this! FromIter?
     for s in vec.into_iter() {
@@ -142,6 +151,7 @@ fn insert_all(set : &mut HashSet<String>, vec : Vec<String>) {
     }
 }
 
+// a set of all the strings in 1-edit distance
 fn edits1(word: &str) -> HashSet<String> {
     let mut set = HashSet::<String>::new();
     let splits = splits(word);
@@ -153,6 +163,7 @@ fn edits1(word: &str) -> HashSet<String> {
     set
 }
 
+// return only the words known in the model
 // TODO words should be an iterator?
 // TODO return should be the word passed in - no need to realloc?
 fn known<'a>(words: HashSet<String>, model: &HashMap<&str, i32>) -> HashSet<String> {
@@ -165,6 +176,7 @@ fn known<'a>(words: HashSet<String>, model: &HashMap<&str, i32>) -> HashSet<Stri
     set
 }
 
+// all the known words within 2-edit distance
 fn known_edits2(word: &str, model: &HashMap<&str, i32>) -> HashSet<String> {
     let mut set = HashSet::<String>::new();
     for e1 in edits1(word).iter() {
@@ -178,11 +190,16 @@ fn known_edits2(word: &str, model: &HashMap<&str, i32>) -> HashSet<String> {
     set
 }
 
+// simple set constructor
+// TODO - there must be a better way of doing this?
 fn make_set(s: String) -> HashSet<String> {
     let mut set = HashSet::new(); set.insert(s);
     set
 }
 
+// all the candidate words for a supplied word.
+// each stage (word, edit1, edit2) is infinitely more likely
+// than the next
 fn candidates(word: &str, model : &HashMap<&str, i32>) -> HashSet<String> {
     let known_as_set = known(make_set(word.to_string()), model);
     if known_as_set.len() > 0 { return known_as_set }
@@ -196,6 +213,8 @@ fn candidates(word: &str, model : &HashMap<&str, i32>) -> HashSet<String> {
     return make_set(word.to_string())
 }
 
+// returns the word frequency, but gives *all* words a minimum frequency
+// of 1
 fn count<'a>(word: &str, model: &'a HashMap<&str, i32>) -> i32 {
     match model.get(word) {
         Some(count) => count.clone(),
@@ -203,6 +222,7 @@ fn count<'a>(word: &str, model: &'a HashMap<&str, i32>) -> i32 {
     }
 }
 
+// returns the corrected word given a model
 fn correct<'a>(word : &str, model : &'a HashMap<&str, i32>) -> String {
     let mut candidates = candidates(word, model).into_iter().collect::<Vec<String>>();
     //pv(&candidates);
