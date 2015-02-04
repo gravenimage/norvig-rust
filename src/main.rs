@@ -13,7 +13,7 @@ use std::old_io::File;
 use std::old_io::BufferedReader;
 use std::ascii::AsciiExt;
 use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::BTreeSet;
 //use std::fmt;
 use std::os;
 
@@ -144,7 +144,7 @@ fn replaces(splits: &Vec<(&str, &str)>) -> Vec<String> {
 }
 
 // consumes all the values in the vec and inserts them into the set
-fn insert_all(set : &mut HashSet<String>, vec : Vec<String>) {
+fn insert_all(set : &mut BTreeSet<String>, vec : Vec<String>) {
     // TODO there must be a very generic way to do this! FromIter?
     for s in vec.into_iter() {
         (*set).insert(s);
@@ -152,8 +152,8 @@ fn insert_all(set : &mut HashSet<String>, vec : Vec<String>) {
 }
 
 // a set of all the strings in 1-edit distance
-fn edits1(word: &str) -> HashSet<String> {
-    let mut set = HashSet::<String>::new();
+fn edits1(word: &str) -> BTreeSet<String> {
+    let mut set = BTreeSet::<String>::new();
     let splits = splits(word);
     insert_all(&mut set, deletes(&splits));
     insert_all(&mut set, inserts(&splits));
@@ -166,8 +166,8 @@ fn edits1(word: &str) -> HashSet<String> {
 // return only the words known in the model
 // TODO words should be an iterator?
 // TODO return should be the word passed in - no need to realloc?
-fn known<'a>(words: HashSet<String>, model: &HashMap<&str, i32>) -> HashSet<String> {
-    let mut set = HashSet::<String>::new();
+fn known<'a>(words: BTreeSet<String>, model: &HashMap<&str, i32>) -> BTreeSet<String> {
+    let mut set = BTreeSet::<String>::new();
     for word in words.into_iter() {
         if model.contains_key(word.as_slice()) {
             set.insert(word);
@@ -177,8 +177,8 @@ fn known<'a>(words: HashSet<String>, model: &HashMap<&str, i32>) -> HashSet<Stri
 }
 
 // all the known words within 2-edit distance
-fn known_edits2(word: &str, model: &HashMap<&str, i32>) -> HashSet<String> {
-    let mut set = HashSet::<String>::new();
+fn known_edits2(word: &str, model: &HashMap<&str, i32>) -> BTreeSet<String> {
+    let mut set = BTreeSet::<String>::new();
     for e1 in edits1(word).iter() {
         for e2 in edits1(&e1[]).iter() {
             if model.contains_key(&e2[]) {
@@ -192,15 +192,15 @@ fn known_edits2(word: &str, model: &HashMap<&str, i32>) -> HashSet<String> {
 
 // simple set constructor
 // TODO - there must be a better way of doing this?
-fn make_set(s: String) -> HashSet<String> {
-    let mut set = HashSet::new(); set.insert(s);
+fn make_set(s: String) -> BTreeSet<String> {
+    let mut set = BTreeSet::new(); set.insert(s);
     set
 }
 
 // all the candidate words for a supplied word.
 // each stage (word, edit1, edit2) is infinitely more likely
 // than the next
-fn candidates(word: &str, model : &HashMap<&str, i32>) -> HashSet<String> {
+fn candidates(word: &str, model : &HashMap<&str, i32>) -> BTreeSet<String> {
     let known_as_set = known(make_set(word.to_string()), model);
     if known_as_set.len() > 0 { return known_as_set }
 
