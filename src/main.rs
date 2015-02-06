@@ -15,7 +15,8 @@ use std::ascii::AsciiExt;
 use std::collections::HashMap;
 use std::collections::HashSet;
 //use std::fmt;
-use std::os;
+use std::env;
+use std::ffi::OsString;
 
 /*
 struct StringSet<'a>(pub &'a HashSet<String>);
@@ -236,10 +237,9 @@ fn main() {
     let t = &s[];
 
     let ws = word_counts(t);
-
-    let argv = os::args();
-    let input = argv.get(1).unwrap();
-    let path = Path::new(&input[]);
+    
+    let argv = env::args().map(|s| s.into_string().unwrap()).collect::<Vec<String>>();
+    let path = Path::new(argv.get(1).unwrap());
     let mut reader = BufferedReader::new(File::open(&path));
 
     for line in reader.lines() {
